@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Life Score</title>
+<style>
+/* ─── Reset ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ─── Fonts (system stack – no network, zero flash) ─── */
+:root{
+  --ff-head: 'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --ff-mono: 'Courier New',Courier,monospace;
+
+  --bg:     #080b12;
+  --surf:   #0e1220;
+  --card:   #121826;
+  --border: #1e2840;
+  --border2:#263050;
+
+  --teal:   #4fffce;
+  --teal2:  #00c9a0;
+  --blue:   #5b8fff;
+  --purple: #a78bfa;
+  --red:    #ff5f5f;
+  --yellow: #ffca45;
+  --orange: #ff9144;
+
+  --text:   #dde6f5;
+  --muted:  #5a6a8a;
+  --muted2: #8494b0;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  font-family:var(--ff-head);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:2rem 1rem 4rem;
+  /* static gradient – no JS, no animation lag */
+  background-image:
+    radial-gradient(ellipse 60% 50% at 10% 0%,rgba(75,255,206,.06) 0%,transparent 100%),
+    radial-gradient(ellipse 40% 40% at 90% 80%,rgba(91,143,255,.05) 0%,transparent 100%);
+}
+
+/* ─── Layout ─────────────────────────────────────────── */
+.page{max-width:560px;margin:0 auto}
+
+/* ─── Header ─────────────────────────────────────────── */
+.hd{text-align:center;padding:2.5rem 0 2rem}
+.hd-badge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--teal);border:1px solid rgba(79,255,206,.3);
+  padding:.3rem .9rem;border-radius:99px;margin-bottom:1.2rem;
+  background:rgba(79,255,206,.04);
+}
+.hd-badge span{width:6px;height:6px;border-radius:50%;background:var(--teal);display:block}
+.hd h1{font-size:clamp(1.9rem,5vw,2.6rem);font-weight:800;line-height:1.1;letter-spacing:-.03em}
+.hd h1 em{font-style:normal;color:var(--teal)}
+.hd p{margin-top:.6rem;color:var(--muted2);font-size:.9rem}
+
+/* ─── Card shell ─────────────────────────────────────── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:1.8rem;
+  margin-bottom:1.2rem;
+  position:relative;
+}
+.card-top-line{
+  position:absolute;top:0;left:15%;right:15%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--teal),transparent);
+  opacity:.35;border-radius:99px;
+}
+.section-title{
+  font-size:.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ─── Budget bar ─────────────────────────────────────── */
+.budget-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.budget-lbl{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#budgetNum{font-family:var(--ff-mono);font-size:.8rem;font-weight:700;color:var(--teal);transition:color .2s}
+#budgetNum.warn{color:var(--yellow)}
+#budgetNum.over{color:var(--red)}
+.bar-track{height:6px;background:var(--border);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--teal);width:0%;will-change:width}
+/* No CSS transition on bar-fill – updated via JS each frame for zero lag */
+
+/* ─── Fields ─────────────────────────────────────────── */
+.fields{display:flex;flex-direction:column;gap:1.1rem;margin-top:1.4rem}
+
+.field-lbl{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem;
+}
+.field-lbl span:first-child{
+  font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);
+  display:flex;align-items:center;gap:.4rem;
+}
+.field-icon{font-size:.95rem;line-height:1}
+.field-val{
+  font-family:var(--ff-mono);font-size:.82rem;font-weight:700;
+  color:var(--teal);background:rgba(79,255,206,.07);
+  border:1px solid rgba(79,255,206,.18);border-radius:6px;
+  padding:.18rem .55rem;min-width:3.2rem;text-align:center;
+}
+.field-val.red{color:var(--red);background:rgba(255,95,95,.07);border-color:rgba(255,95,95,.2)}
+
+.slider-row{display:flex;align-items:center;gap:.7rem}
+
+/* ── Slider – hardware accelerated, no extra repaints ── */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  flex:1;height:5px;border-radius:99px;outline:none;cursor:pointer;border:none;
+  background:var(--border2);  /* static – track colour set inline via JS */
+  /* will-change keeps it on GPU layer */
+  will-change:transform;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:17px;height:17px;border-radius:50%;
+  background:var(--teal);border:2px solid var(--bg);
+  cursor:pointer;
+  /* NO box-shadow here – shadows cause repaint lag on sliders */
+}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;
+  background:var(--teal);border:2px solid var(--bg);cursor:pointer;
+}
+.field.red-field input[type=range]::-webkit-slider-thumb{background:var(--red)}
+.field.red-field input[type=range]::-moz-range-thumb{background:var(--red)}
+
+/* number box beside slider */
+.num-input{
+  font-family:var(--ff-mono);font-size:.78rem;font-weight:700;
+  width:3.8rem;text-align:center;padding:.25rem .3rem;
+  background:var(--surf);border:1px solid var(--border2);border-radius:8px;
+  color:var(--teal);outline:none;
+  -moz-appearance:textfield;appearance:textfield;
+}
+.num-input::-webkit-inner-spin-button,.num-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.num-input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(79,255,206,.12)}
+.red-field .num-input{color:var(--red)}
+.red-field .num-input:focus{border-color:var(--red);box-shadow:0 0 0 2px rgba(255,95,95,.12)}
+
+.over-budget .num-input{border-color:var(--red)!important}
+
+/* ─── Button ─────────────────────────────────────────── */
+.calc-btn{
+  margin-top:1.6rem;width:100%;padding:.95rem;border:none;border-radius:13px;
+  background:linear-gradient(135deg,var(--teal2),var(--teal));
+  color:#050d18;font-family:var(--ff-head);font-size:.95rem;font-weight:800;
+  letter-spacing:.04em;cursor:pointer;
+  box-shadow:0 4px 20px rgba(79,255,206,.2);
+  transition:opacity .15s,transform .12s;
+}
+.calc-btn:hover:not(:disabled){opacity:.92;transform:translateY(-1px)}
+.calc-btn:active:not(:disabled){transform:scale(.98)}
+.calc-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ─── Results ────────────────────────────────────────── */
+.results{display:none}
+.results.visible{display:block}
+
+/* score card */
+.score-card{
+  text-align:center;padding:1.8rem 1rem 1.4rem;
+  background:var(--surf);border:1px solid var(--border);border-radius:16px;margin-bottom:1rem;
+}
+.score-sup{font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.score-big{font-family:var(--ff-mono);font-size:clamp(3rem,11vw,4rem);font-weight:700;line-height:1}
+.score-big sub{font-size:1rem;color:var(--muted);font-family:var(--ff-head)}
+.score-grade{font-size:.8rem;font-weight:700;margin-top:.4rem;letter-spacing:.06em}
+.prog-wrap{height:7px;background:var(--border);border-radius:99px;overflow:hidden;margin:1rem 0 .5rem}
+.prog-bar{height:100%;border-radius:99px;width:0%;transition:width .9s cubic-bezier(.22,1,.36,1)}
+
+/* stat chips */
+.stat-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.chip{
+  flex:1;min-width:calc(50% - .3rem);
+  background:var(--surf);border:1px solid var(--border);border-radius:12px;
+  padding:.75rem .9rem;
+}
+.chip.full{min-width:100%}
+.chip.danger{border-color:rgba(255,95,95,.3);background:rgba(255,95,95,.05)}
+.chip-lbl{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.25rem}
+.chip-val{font-family:var(--ff-mono);font-size:1.15rem;font-weight:700}
+.chip-sub{font-size:.67rem;color:var(--muted);margin-top:.15rem}
+
+/* donut */
+.donut-card{
+  display:flex;align-items:center;gap:1.1rem;
+  background:var(--surf);border:1px solid var(--border);border-radius:16px;
+  padding:1.1rem 1.2rem;margin-bottom:1rem;
+}
+.donut-svg{flex-shrink:0}
+.d-legend{flex:1;display:flex;flex-direction:column;gap:.32rem}
+.d-row{display:flex;align-items:center;gap:.45rem;font-size:.77rem}
+.d-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.d-name{flex:1;color:var(--muted2)}
+.d-hrs{font-family:var(--ff-mono);font-size:.77rem;font-weight:700}
+
+/* message banner */
+.banner{
+  text-align:center;padding:.85rem 1rem;border-radius:12px;
+  font-size:.88rem;font-weight:700;border:1px solid;margin-bottom:1rem;
+}
+.banner.low {background:rgba(255,95,95,.07);border-color:rgba(255,95,95,.25);color:#ff8080}
+.banner.mid {background:rgba(255,202,69,.07);border-color:rgba(255,202,69,.25);color:var(--yellow)}
+.banner.high{background:rgba(79,255,206,.07);border-color:rgba(79,255,206,.25);color:var(--teal)}
+
+/* tips */
+.tips-list{display:flex;flex-direction:column;gap:.5rem}
+.tip{
+  display:flex;gap:.6rem;align-items:flex-start;
+  padding:.65rem .85rem;background:var(--surf);border:1px solid var(--border);
+  border-radius:10px;font-size:.8rem;color:var(--muted2);line-height:1.45;
+}
+.tip-ico{flex-shrink:0;font-size:.95rem;margin-top:.05rem}
+
+/* ─── Routine Plan ───────────────────────────────────── */
+.routine-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.8rem;position:relative;overflow:hidden}
+.routine-card .card-top-line{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+
+.plan-summary{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:1.2rem;
+}
+.ps-item{
+  background:var(--surf);border:1px solid var(--border);border-radius:11px;
+  padding:.75rem .9rem;display:flex;flex-direction:column;gap:.2rem;
+}
+.ps-ico{font-size:1rem;margin-bottom:.1rem}
+.ps-act{font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ps-hrs{font-family:var(--ff-mono);font-size:1.05rem;font-weight:700}
+.ps-diff{font-size:.67rem;margin-top:.1rem}
+.ps-diff.up{color:#4ade80}
+.ps-diff.down{color:var(--red)}
+.ps-diff.same{color:var(--muted)}
+
+.schedule{display:flex;flex-direction:column;gap:0;margin-bottom:1rem}
+.sch-item{
+  display:flex;align-items:flex-start;gap:.8rem;
+  padding:.7rem 0;border-bottom:1px solid var(--border);position:relative;
+}
+.sch-item:last-child{border-bottom:none}
+.sch-time{
+  font-family:var(--ff-mono);font-size:.7rem;font-weight:700;color:var(--muted);
+  min-width:4.2rem;padding-top:.1rem;
+}
+.sch-dot-col{display:flex;flex-direction:column;align-items:center;gap:0;padding-top:.35rem}
+.sch-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sch-line{flex:1;width:1px;background:var(--border);min-height:1.2rem;margin-top:2px}
+.sch-item:last-child .sch-line{display:none}
+.sch-body{flex:1;padding-top:.05rem}
+.sch-act{font-size:.84rem;font-weight:700;line-height:1.2}
+.sch-note{font-size:.72rem;color:var(--muted);margin-top:.18rem}
+.sch-dur{
+  font-family:var(--ff-mono);font-size:.68rem;font-weight:700;
+  border-radius:5px;padding:.1rem .38rem;margin-left:.4rem;vertical-align:middle;
+}
+
+.plan-note{
+  font-size:.75rem;color:var(--muted);line-height:1.55;
+  background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;
+}
+.plan-note strong{color:var(--muted2)}
+
+/* ─── Keyframes (minimal, used only on result reveal) ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.anim{animation:fadeUp .38s ease both}
+
+/* ─── Scrollbar (aesthetic) ─────────────────────────── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="hd">
+    <div class="hd-badge"><span></span> 24-Hour Life Audit</div>
+    <h1>Student <em>Life Score</em><br>Calculator</h1>
+    <p>Enter your daily hours below — total must stay within 24h.</p>
+  </header>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-top-line"></div>
+    <div class="section-title">Daily Hour Budget</div>
+
+    <!-- Budget bar -->
+    <div class="budget-row">
+      <span class="budget-lbl">⏱ Hours Used</span>
+      <span id="budgetNum">0 / 24h</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+
+    <!-- Fields -->
+    <div class="fields">
+
+      <div class="field" id="f-study">
+        <div class="field-lbl">
+          <span><span class="field-icon">📚</span>Study Hours</span>
+          <span class="field-val" id="vStudy">5.0h</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="sStudy" min="0" max="16" value="5" step="0.5">
+          <input type="number" class="num-input" id="nStudy" min="0" max="16" value="5" step="0.5">
+        </div>
+      </div>
+
+      <div class="field" id="f-sleep">
+        <div class="field-lbl">
+          <span><span class="field-icon">🌙</span>Sleep Hours</span>
+          <span class="field-val" id="vSleep">7.0h</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="sSleep" min="0" max="12" value="7" step="0.5">
+          <input type="number" class="num-input" id="nSleep" min="0" max="12" value="7" step="0.5">
+        </div>
+      </div>
+
+      <div class="field red-field" id="f-screen">
+        <div class="field-lbl">
+          <span><span class="field-icon">📱</span>Screen Time</span>
+          <span class="field-val red" id="vScreen">3.0h</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="sScreen" min="0" max="12" value="3" step="0.5">
+          <input type="number" class="num-input" id="nScreen" min="0" max="12" value="3" step="0.5">
+        </div>
+      </div>
+
+      <div class="field" id="f-ex">
+        <div class="field-lbl">
+          <span><span class="field-icon">🏃</span>Exercise</span>
+          <span class="field-val" id="vEx">1.0h</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="sEx" min="0" max="6" value="1" step="0.25">
+          <input type="number" class="num-input" id="nEx" min="0" max="6" value="1" step="0.25">
+        </div>
+      </div>
+
+    </div><!-- /fields -->
+
+    <button class="calc-btn" id="calcBtn" onclick="doCalc()">Calculate My Score →</button>
+  </div><!-- /card -->
+
+  <!-- Results (hidden until calculated) -->
+  <div class="results" id="results">
+
+    <!-- Score -->
+    <div class="card anim" style="animation-delay:.0s">
+      <div class="card-top-line"></div>
+      <div class="section-title">Your Score</div>
+      <div class="score-card">
+        <div class="score-sup">Life Productivity Score</div>
+        <div class="score-big" id="scoreBig">—<sub>/100</sub></div>
+        <div class="score-grade" id="scoreGrade"></div>
+        <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+      </div>
+      <div class="banner" id="banner"></div>
+
+      <!-- Stat chips -->
+      <div class="stat-row" id="statRow"></div>
+    </div>
+
+    <!-- Donut breakdown -->
+    <div class="card anim" style="animation-delay:.06s">
+      <div class="card-top-line"></div>
+      <div class="section-title">24h Breakdown</div>
+      <div class="donut-card">
+        <svg class="donut-svg" id="donutSvg" width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#1e2840" stroke-width="14"/>
+        </svg>
+        <div class="d-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card anim" id="tipsCard" style="animation-delay:.1s;display:none">
+      <div class="card-top-line"></div>
+      <div class="section-title">Improvement Tips</div>
+      <div class="tips-list" id="tipsList"></div>
+    </div>
+
+    <!-- Routine Plan -->
+    <div class="routine-card anim" id="routineCard" style="animation-delay:.14s">
+      <div class="card-top-line"></div>
+      <div class="section-title">Suggested Daily Routine</div>
+
+      <div class="plan-summary" id="planSummary"></div>
+
+      <div class="section-title" style="margin-top:.4rem">Hour-by-Hour Schedule</div>
+      <div class="schedule" id="schedule"></div>
+
+      <div class="plan-note" id="planNote"></div>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /page -->
+
+<script>
+/* ══════════════════════════════════════════════════════
+   PERFORMANCE-FIRST APPROACH
+   • Sliders share one RAF loop – no per-event DOM writes
+   • Budget bar uses direct style, no CSS transition
+   • Heavy result rendering only on button click
+   • No web fonts loaded synchronously
+   ══════════════════════════════════════════════════════ */
+
+const FIELDS = [
+  { id:'study',  s:'sStudy', n:'nStudy', v:'vStudy', f:'f-study', max:16 },
+  { id:'sleep',  s:'sSleep', n:'nSleep', v:'vSleep', f:'f-sleep', max:12 },
+  { id:'screen', s:'sScreen',n:'nScreen',v:'vScreen',f:'f-screen',max:12 },
+  { id:'ex',     s:'sEx',    n:'nEx',    v:'vEx',    f:'f-ex',    max:6  },
+];
+
+const C = {
+  study:'#4fffce', sleep:'#7c8fff', screen:'#ff5f5f', ex:'#ffca45', wasted:'#1e2840'
+};
+
+// Cache DOM refs once
+const els = {};
+FIELDS.forEach(f=>{
+  els[f.id] = {
+    s: document.getElementById(f.s),
+    n: document.getElementById(f.n),
+    v: document.getElementById(f.v),
+    f: document.getElementById(f.f),
+  };
+});
+const barFill   = document.getElementById('barFill');
+const budgetNum = document.getElementById('budgetNum');
+const calcBtn   = document.getElementById('calcBtn');
+
+/* ── RAF-throttled update ── */
+let rafPending = false;
+function scheduleUpdate(){
+  if(rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(()=>{ rafPending=false; applyUpdate(); });
+}
+
+function applyUpdate(){
+  // Sync display badges and totals
+  let total = 0;
+  FIELDS.forEach(f=>{
+    const val = clamp(parseFloat(els[f.id].s.value)||0, 0, f.max);
+    total += val;
+    els[f.id].v.textContent = val.toFixed(1)+'h';
+  });
+
+  // Budget bar — direct width, no CSS transition (smooth by RAF)
+  const pct = Math.min(100,(total/24)*100);
+  barFill.style.width = pct+'%';
+
+  if(total > 24){
+    barFill.style.background = 'var(--red)';
+    budgetNum.textContent = total.toFixed(1)+' / 24h  ⚠️';
+    budgetNum.className   = 'over';
+    calcBtn.disabled = true;
+    FIELDS.forEach(f=>els[f.id].f.classList.add('over-budget'));
+  } else if(total >= 20){
+    barFill.style.background = 'var(--yellow)';
+    budgetNum.textContent = total.toFixed(1)+' / 24h';
+    budgetNum.className   = 'warn';
+    calcBtn.disabled = false;
+    FIELDS.forEach(f=>els[f.id].f.classList.remove('over-budget'));
+  } else {
+    barFill.style.background = 'var(--teal)';
+    budgetNum.textContent = total.toFixed(1)+' / 24h';
+    budgetNum.className   = '';
+    calcBtn.disabled = false;
+    FIELDS.forEach(f=>els[f.id].f.classList.remove('over-budget'));
+  }
+}
+
+/* ── Wire sliders → number inputs ── */
+FIELDS.forEach(f=>{
+  const {s,n} = els[f.id];
+
+  // Slider moves number box + schedules update
+  s.addEventListener('input',()=>{
+    n.value = parseFloat(s.value).toFixed(1);
+    scheduleUpdate();
+  });
+
+  // Number box moves slider + schedules update
+  n.addEventListener('input',()=>{
+    let v = parseFloat(n.value)||0;
+    v = clamp(v,0,f.max);
+    s.value = v;
+    scheduleUpdate();
+  });
+  n.addEventListener('change',()=>{
+    let v = parseFloat(n.value)||0;
+    v = clamp(v,0,f.max);
+    n.value = v.toFixed(1);
+    s.value = v;
+    scheduleUpdate();
+  });
+});
+
+function clamp(v,mn,mx){ return Math.max(mn,Math.min(mx,v)); }
+function getVal(id){ return parseFloat(els[id].s.value)||0; }
+
+/* ══════════════════════════════════════════════════════
+   CALCULATE
+   ══════════════════════════════════════════════════════ */
+function doCalc(){
+  const study    = getVal('study');
+  const sleep    = getVal('sleep');
+  const screen   = getVal('screen');
+  const exercise = getVal('ex');
+
+  const used   = study+sleep+screen+exercise;
+  const wasted = Math.max(0,+(24-used).toFixed(2));
+
+  // Score formula
+  const raw = (study*5)+(sleep*3)-(screen*2)+(exercise*4)-(wasted*1.5);
+  const MIN=-36, MAX=140;
+  const score = Math.round(clamp(((raw-MIN)/(MAX-MIN))*100, 0, 100));
+
+  // Show results
+  const resultEl = document.getElementById('results');
+  resultEl.style.display = 'none';
+  resultEl.classList.remove('visible');
+
+  // Small delay so the browser paints the button press first
+  setTimeout(()=>{
+    resultEl.style.display = 'block';
+    resultEl.classList.add('visible');
+    renderAll(score, study, sleep, screen, exercise, wasted);
+    // Smooth scroll to results
+    setTimeout(()=>resultEl.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  },60);
+}
+
+/* ══════════════════════════════════════════════════════
+   RENDER ALL RESULT SECTIONS
+   ══════════════════════════════════════════════════════ */
+function renderAll(score, study, sleep, screen, exercise, wasted){
+  const col = score<40?'var(--red)': score<=70?'var(--yellow)':'var(--teal)';
+  const barGrad = score<40
+    ? 'linear-gradient(90deg,#c0392b,var(--red))'
+    : score<=70
+    ? 'linear-gradient(90deg,#b8860b,var(--yellow))'
+    : 'linear-gradient(90deg,var(--teal2),var(--teal))';
+
+  // Score number
+  const sb = document.getElementById('scoreBig');
+  sb.innerHTML = score+'<sub>/100</sub>';
+  sb.style.color = col;
+
+  // Grade label
+  const grade = score<40?'Needs Work':score<=70?'Average':'Excellent';
+  const gEl = document.getElementById('scoreGrade');
+  gEl.textContent = grade;
+  gEl.style.color = col;
+
+  // Progress bar
+  const pb = document.getElementById('progBar');
+  pb.style.background = barGrad;
+  pb.style.width = '0%';
+  setTimeout(()=>{ pb.style.width = score+'%'; },80);
+
+  // Banner
+  const bn = document.getElementById('banner');
+  if(score<40){bn.className='banner low';bn.textContent='⚠️  You are wasting your potential — time to make a change.';}
+  else if(score<=70){bn.className='banner mid';bn.textContent='📊  You\'re average — small habit shifts will move the needle fast.';}
+  else{bn.className='banner high';bn.textContent='✅  Excellent routine — stay consistent and keep building.';}
+
+  // Stat chips
+  const pct = h=>((h/24)*100).toFixed(0);
+  document.getElementById('statRow').innerHTML =
+    chip('📚','Study',study, C.study)+
+    chip('🌙','Sleep',sleep, C.sleep)+
+    chip('📱','Screen',screen,C.screen)+
+    chip('🏃','Exercise',exercise,C.ex)+
+    chipFull('⚠️','Wasted / Unplanned',wasted,
+      `${pct(wasted)}% of your day is unaccounted for — reclaim it!`,'danger');
+
+  // Donut
+  drawDonut(study,sleep,screen,exercise,wasted);
+
+  // Tips
+  buildTips(study,sleep,screen,exercise,wasted);
+
+  // Routine
+  buildRoutine(study,sleep,screen,exercise,wasted,score);
+}
+
+/* ── chip helpers ── */
+function chip(icon,label,val,col){
+  return `<div class="chip">
+    <div class="chip-lbl">${icon} ${label}</div>
+    <div class="chip-val" style="color:${col}">${val.toFixed(1)}h</div>
+    <div class="chip-sub">${((val/24)*100).toFixed(0)}% of your day</div>
+  </div>`;
+}
+function chipFull(icon,label,val,sub,cls=''){
+  const c = val>3?'var(--red)':'var(--muted2)';
+  return `<div class="chip full ${cls}">
+    <div class="chip-lbl">${icon} ${label}</div>
+    <div class="chip-val" style="color:${c}">${val.toFixed(1)}h out of 24h</div>
+    <div class="chip-sub">${sub}</div>
+  </div>`;
+}
+
+/* ── Donut ── */
+function drawDonut(study,sleep,screen,exercise,wasted){
+  const CX=50,CY=50,R=40,SW=14;
+  const CIRC=2*Math.PI*R;
+  const segs=[
+    {val:study,   col:C.study,  label:'Study',   icon:'📚'},
+    {val:sleep,   col:C.sleep,  label:'Sleep',   icon:'🌙'},
+    {val:screen,  col:C.screen, label:'Screen',  icon:'📱'},
+    {val:exercise,col:C.ex,     label:'Exercise',icon:'🏃'},
+    {val:wasted,  col:C.wasted, label:'Wasted',  icon:'⏳'},
+  ];
+  const svg=document.getElementById('donutSvg');
+  svg.querySelectorAll('.arc-seg').forEach(e=>e.remove());
+
+  let cum=0;
+  segs.forEach(seg=>{
+    if(seg.val<=0)return;
+    const frac=seg.val/24;
+    const dash=frac*CIRC;
+    const gap=CIRC-dash;
+    const offset=CIRC*0.25 - cum*CIRC;
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('class','arc-seg');
+    c.setAttribute('cx',CX);c.setAttribute('cy',CY);c.setAttribute('r',R);
+    c.setAttribute('fill','none');
+    c.setAttribute('stroke',seg.col);
+    c.setAttribute('stroke-width',SW);
+    c.setAttribute('stroke-dasharray',`${dash} ${gap}`);
+    c.setAttribute('stroke-dashoffset',offset);
+    c.setAttribute('transform',`rotate(-90 ${CX} ${CY})`);
+    svg.appendChild(c);
+    cum+=frac;
+  });
+
+  document.getElementById('donutLegend').innerHTML=segs
+    .filter(s=>s.val>0)
+    .map(s=>`<div class="d-row">
+      <div class="d-dot" style="background:${s.col}"></div>
+      <span class="d-name">${s.icon} ${s.label}</span>
+      <span class="d-hrs" style="color:${s.col}">${s.val.toFixed(1)}h</span>
+    </div>`).join('');
+}
+
+/* ── Tips ── */
+function buildTips(study,sleep,screen,exercise,wasted){
+  const tips=[];
+  if(study<3)      tips.push({i:'📚',t:'Study less than 3h? Try Pomodoro: 25 min focused study + 5 min break × 4 rounds = 2h of deep work.'});
+  if(sleep<7)      tips.push({i:'🌙',t:'Less than 7h sleep impairs memory consolidation. Aim for 7–8h with a fixed wake time.'});
+  if(screen>4)     tips.push({i:'📵',t:'Screen time over 4h drains focus. Try app limits and phone-free study blocks.'});
+  if(exercise<.5)  tips.push({i:'🏃',t:'Even 30 min of walking raises BDNF — the brain chemical that boosts learning by 20%.'});
+  if(wasted>3)     tips.push({i:'🗓️',t:`${wasted.toFixed(1)} unplanned hours daily = ${(wasted*7).toFixed(0)}h lost per week. Time-block them into the routine below.`});
+  if(study>8)      tips.push({i:'⚡',t:'Studying 8h+ without breaks leads to diminishing returns. Quality beats quantity — use active recall.'});
+
+  const tc=document.getElementById('tipsCard');
+  const tl=document.getElementById('tipsList');
+  if(tips.length){
+    tc.style.display='block';
+    tl.innerHTML=tips.map((t,i)=>`<div class="tip" style="animation-delay:${i*.06}s">
+      <span class="tip-ico">${t.i}</span><span>${t.t}</span></div>`).join('');
+  } else {
+    tc.style.display='none';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   ROUTINE PLAN BUILDER
+   ══════════════════════════════════════════════════════ */
+function buildRoutine(study,sleep,screen,exercise,wasted,score){
+
+  /* ── Ideal targets based on research ── */
+  const ideal = { study:6, sleep:8, screen:1.5, exercise:1 };
+
+  /* ── Recommended hours (clamp to sensible bounds) ── */
+  const rec = {
+    sleep:    clamp(Math.round(Math.max(sleep,7)*2)/2, 7, 9),
+    study:    clamp(Math.round(Math.max(study,4)*2)/2, 4, 8),
+    exercise: clamp(Math.max(exercise,.5)*1, .5, 1.5),
+    screen:   clamp(Math.min(screen,2), 1, 2),
+  };
+  const recTotal = rec.study+rec.sleep+rec.exercise+rec.screen;
+  const freeTime = Math.max(0,+(24-recTotal).toFixed(1));
+
+  /* ── Plan summary comparison ── */
+  function diff(key){
+    const d = rec[key]-({'study':study,'sleep':sleep,'exercise':exercise,'screen':screen}[key]);
+    if(Math.abs(d)<.25)return`<span class="ps-diff same">✓ On target</span>`;
+    if(d>0)return`<span class="ps-diff up">↑ +${d.toFixed(1)}h suggested</span>`;
+    return`<span class="ps-diff down">↓ ${d.toFixed(1)}h suggested</span>`;
+  }
+
+  document.getElementById('planSummary').innerHTML=`
+    <div class="ps-item"><div class="ps-ico">📚</div><div class="ps-act">Study</div>
+      <div class="ps-hrs" style="color:${C.study}">${rec.study}h / day</div>${diff('study')}</div>
+    <div class="ps-item"><div class="ps-ico">🌙</div><div class="ps-act">Sleep</div>
+      <div class="ps-hrs" style="color:${C.sleep}">${rec.sleep}h / day</div>${diff('sleep')}</div>
+    <div class="ps-item"><div class="ps-ico">🏃</div><div class="ps-act">Exercise</div>
+      <div class="ps-hrs" style="color:${C.ex}">${rec.exercise}h / day</div>${diff('exercise')}</div>
+    <div class="ps-item"><div class="ps-ico">📱</div><div class="ps-act">Screen</div>
+      <div class="ps-hrs" style="color:${C.screen}">${rec.screen}h / day</div>${diff('screen')}</div>
+  `;
+
+  /* ── Hour-by-hour schedule ── */
+  // Build a schedule starting from 6 AM
+  const blocks = [];
+
+  const wakeHr = 6;
+  let cur = wakeHr;
+
+  const push=(act,dur,col,note)=>{
+    blocks.push({time:fmt(cur), act, dur, col, note});
+    cur+=dur;
+  };
+
+  push('Wake Up & Morning Routine', .5, '#94a3b8', 'Hydrate, brush, freshen up');
+  push('Exercise & Movement', rec.exercise, C.ex, `${(rec.exercise*60).toFixed(0)} min — gym, run, yoga or walk`);
+  push('Shower & Breakfast', .5, '#94a3b8', 'Fuel your brain before studying');
+
+  // Study block 1
+  const s1 = Math.min(rec.study, 3);
+  push('Deep Study — Block 1', s1, C.study, `Hardest subject first. Pomodoro: 25+5 min cycles`);
+  push('Break & Light Snack', .5, '#94a3b8', 'Step away from the desk');
+
+  // Study block 2
+  const s2 = Math.max(0, rec.study - s1);
+  if(s2>=.5) push('Deep Study — Block 2', s2, C.study, 'Revision, practice problems or reading');
+
+  push('Lunch & Rest', 1, '#94a3b8', 'Eat well, short nap optional (20 min max)');
+
+  if(rec.screen*.5 >= .5) push('Allowed Screen / Leisure', rec.screen*.5, C.screen, 'YouTube, social media — time-boxed');
+  push('Self-study / Assignments', 1.5, C.study, 'Homework, projects, online courses');
+  push('Dinner & Family Time', 1, '#94a3b8', 'Unplug — rest your eyes');
+  if(rec.screen*.5 >= .5) push('Leisure Screen Time', rec.screen*.5, C.screen, 'Entertainment — keep it capped');
+  push('Wind-down Routine', .5, '#94a3b8', 'No screens — journaling, reading fiction, stretching');
+  push('Sleep', rec.sleep, C.sleep, `${rec.sleep}h of quality sleep — non-negotiable`);
+
+  document.getElementById('schedule').innerHTML = blocks.map((b,i)=>{
+    const durLabel = b.dur>=1
+      ? (Number.isInteger(b.dur)?b.dur+'h':b.dur+'h')
+      : (b.dur*60).toFixed(0)+'m';
+    return `<div class="sch-item">
+      <div class="sch-time">${b.time}</div>
+      <div class="sch-dot-col">
+        <div class="sch-dot" style="background:${b.col}"></div>
+        <div class="sch-line" style="background:${b.col}22"></div>
+      </div>
+      <div class="sch-body">
+        <div class="sch-act">${b.act}
+          <span class="sch-dur" style="background:${b.col}18;color:${b.col}">${durLabel}</span>
+        </div>
+        <div class="sch-note">${b.note}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  /* ── Plan note ── */
+  const msg = score>=70
+    ? `Your current habits are <strong>strong</strong>. This schedule builds on your momentum. Stay consistent — compound effort wins.`
+    : score>=40
+    ? `You're <strong>almost there</strong>. Implementing this routine for just 21 days will build the habit loop. Start with sleep and study blocks first.`
+    : `Small, <strong>sustainable changes</strong> beat overnight overhauls. Pick ONE thing from this plan to fix this week, then stack from there.`;
+  document.getElementById('planNote').innerHTML=
+    `<strong>📌 Your personalised note:</strong> ${msg} Free/unstructured time in this plan: <strong>${freeTime.toFixed(1)}h</strong> — use it for hobbies, socialising or rest.`;
+}
+
+/* ── Time formatter ── */
+function fmt(h){
+  const total=Math.round(h*60);
+  const hh=Math.floor(total/60)%24;
+  const mm=total%60;
+  const ampm=hh<12?'AM':'PM';
+  const h12=hh===0?12:hh>12?hh-12:hh;
+  return `${h12}:${mm.toString().padStart(2,'0')} ${ampm}`;
+}
+
+/* ── Init ── */
+applyUpdate();
+</script>
+</body>
+</html>
